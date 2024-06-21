@@ -9,7 +9,7 @@ Function Connect-CiscoISE {
 	then it is saved to a global variable to be used for subsequent Cisco ISE commands.
 	
     .EXAMPLE
-    PS C:\> Connect-CiscoISE -SkipCertificateCheck -ISEHost ise.local -Username admin -Password password
+    PS C:\> Connect-CiscoISE -SkipCertificateCheck -Host ise.local -Username admin -Password password
 
   #>
   
@@ -17,8 +17,8 @@ Function Connect-CiscoISE {
   
   Param(
     [Parameter(Mandatory=$false)][Switch]$SkipCertificateCheck = $True,
-    [Parameter(Mandatory=$true)][String]$ISEHost = "",
-    [Parameter(Mandatory=$false)][String]$ISEPort = "9060",
+    [Parameter(Mandatory=$true)][String]$Host = "",
+    [Parameter(Mandatory=$false)][String]$Port = "9060",
     [Parameter(Mandatory=$false)][String]$Username = "",
     [Parameter(Mandatory=$false)][String]$Password = "",
     [Parameter(Mandatory=$false)][String]$Accept = "",
@@ -43,7 +43,7 @@ Function Connect-CiscoISE {
     $Headers.Add("Accept", "application/vnd.com.cisco.ise.identity.endpointgroup.1.0+xml")
     $Headers.Add("charset", "utf-8")
     
-    $URI = "https://$($ISEHost):$($ISEPort)/ers/config/endpointgroup"
+    $URI = "https://$($Host):$($Port)/ers/config/endpointgroup"
     Try {
       If($SkipCertificateCheck) {
         $requests = Invoke-WebRequest -Uri $URI -Method 'GET' -Headers $Headers -SkipCertificateCheck
@@ -68,7 +68,7 @@ Function Connect-CiscoISE {
           "charset"="utf-8"
     }
     $global:ciscoISEProxyConnection = new-object PSObject -Property @{
-        'Server' = "https://$($ISEHost):$($ISEPort)"
+        'Server' = "https://$($Host):$($Port)"
         'headers' = $Headers
         'SkipCertificateCheck' = $SkipCertificateCheck
         'troubleshoot' = $Troubleshoot
@@ -175,11 +175,11 @@ Function Send-CiscoISERestRequest {
 
 Function Get-CiscoISEEndpointIdentityGroups {
   Param(
-     [String]$FilterName=""
+     [String]$Name=""
   )
   $Filter = ""
-  If($FilterName){
-     $Filter = "?filter=name.EQ.$($FilterName)"
+  If($Name){
+     $Filter = "?filter=name.EQ.$($Name)"
   }
   $URI = "/ers/config/endpointgroup$($Filter)"
   $Accept = "application/vnd.com.cisco.ise.identity.endpointgroup.1.0+xml"
@@ -189,12 +189,12 @@ Function Get-CiscoISEEndpointIdentityGroups {
 
 Function Get-CiscoISEEndpoints {
   Param(
-     [String]$FilterName=""
+     [String]$Name=""
   )
   $Filter = ""
-  If($FilterName){
-     $FilterName = ([System.Web.HttpUtility]::UrlEncode($FilterName)).ToUpper()
-     $Filter = "/name/$($FilterName)"
+  If($Name){
+     $Name = ([System.Web.HttpUtility]::UrlEncode($Name)).ToUpper()
+     $Filter = "/name/$($Name)"
      $URI = "/ers/config/endpoint$($Filter)"
      $URI = "$($global:ciscoISEProxyConnection.Server)$($URI)"
      $global:ciscoISEProxyConnection.headers['Accept'] = "application/vnd.com.cisco.ise.identity.endpoint.1.0+xml"
@@ -224,7 +224,7 @@ Function New-CiscoISEEndPoint {
       [string]$GroupName = ""
    )
 
-   $GroupId = (Get-CiscoISEEndpointIdentityGroups -FilterName "$($GroupName)").id
+   $GroupId = (Get-CiscoISEEndpointIdentityGroups -Name "$($GroupName)").id
    If(-Not $GroupId){
       Write-Error "Group does not exist"
       Return $false
@@ -257,7 +257,7 @@ Function Update-CiscoISEEndPoint {
       [string]$GroupName = ""
    )
 
-   $GroupId = (Get-CiscoISEEndpointIdentityGroups -FilterName "$($GroupName)").id
+   $GroupId = (Get-CiscoISEEndpointIdentityGroups -Name "$($GroupName)").id
    If(-Not $GroupId){
       Write-Error "Group does not exist"
       Return $false
@@ -272,7 +272,7 @@ Function Update-CiscoISEEndPoint {
       }
    }
    
-   $ID = Get-CiscoISEEndpoints -FilterName $Name
+   $ID = Get-CiscoISEEndpoints -Name $Name
    
    $ID = ([System.Web.HttpUtility]::UrlEncode($ID.id))
    $Filter = "/$($ID)"
@@ -294,7 +294,7 @@ Param(
       [string]$Name = ""
    )
    
-   $ID = Get-CiscoISEEndpoints -FilterName $Name
+   $ID = Get-CiscoISEEndpoints -Name $Name
    
    $ID = ([System.Web.HttpUtility]::UrlEncode($ID.id))
    $Filter = "/$($ID)"
