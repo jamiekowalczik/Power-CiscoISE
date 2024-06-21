@@ -36,10 +36,10 @@ Function Connect-CiscoISE {
     $Headers = @{}
     $Headers.Add("Authorization", "Basic $($basicAuthValue) ")
     $Headers.Add("Content-Type", "application/json")
-    $Headers.Add("Accept", "application/vnd.com.cisco.ise.identity.endpointgroup.1.0+xml")
+    $Headers.Add("Accept", "application/json")
     $Headers.Add("charset", "utf-8")
     
-    $URI = "https://$($Host):$($Port)/ers/config/endpointgroup"
+    $URI = "https://$($Host):$($Port)/ers/config/op/systemconfig/iseversion"
     Try {
       If($SkipCertificateCheck) {
         $requests = Invoke-WebRequest -Uri $URI -Method 'GET' -Headers $Headers -SkipCertificateCheck
@@ -74,6 +74,63 @@ Function Connect-CiscoISE {
   
   end {}
   
+}
+
+Function Send-CiscoISERestSimpleRequest {
+  [CmdLetBinding(DefaultParameterSetName="URI")]
+  Param(
+    [String]$Method = "GET",
+    [Parameter(Mandatory=$true)][String]$URI,
+    [Parameter(Mandatory=$false)][String]$Accept = "",
+    [PSObject]$PSObject
+  )
+
+  If ($PSObject) {
+    $POSTData = $PSObject | ConvertTo-Json -Depth 100
+  } Else {
+    $POSTData = ""
+  }
+
+  If ($global:ciscoISEProxyConnection.Troubleshoot) {
+     Write-Output "URI: $($URI)"
+     Write-Output "Method: $($Method)"
+     $POSTData
+  }
+
+  $global:ciscoISEProxyConnection.headers['Accept'] = $Accept
+  
+  $Separator = "?"
+  If($URI -Like "*``?*"){ $Separator = "&" }
+
+  If (-Not $global:ciscoISEProxyConnection) { Write-error "No Cisco ISE Connection found, please use Connect-CiscoISE" } Else {
+      $URI = "$($global:ciscoISEProxyConnection.Server)$($URI)"
+      Try {
+        If($global:ciscoISEProxyConnection.SkipCertificateCheck) {
+          If ($POSTData) {
+            $Response = Invoke-RestMethod -Uri $URI -Headers $global:ciscoISEProxyConnection.headers -Method $Method -SkipCertificateCheck -Body $POSTData
+          } Else {
+            $Response = Invoke-RestMethod -Uri "$($URI)" -Headers $global:ciscoISEProxyConnection.headers -Method $Method -SkipCertificateCheck
+	        }
+        } else {
+          If ($POSTData) {
+            $Response = Invoke-RestMethod -Uri $URI -Headers $global:ciscoISEProxyConnection.headers -Method $Method -Body $POSTData
+          } Else {
+            $Response = Invoke-RestMethod -Uri "$($URI)" -Headers $global:ciscoISEProxyConnection.headers -Method $Method
+          }
+        }
+      } catch {
+         if($_.Exception.Response.StatusCode -eq "Unauthorized") {
+            Write-Host -ForegroundColor Red "`nThe Cisco ISE connection failed - Unauthorized`n"
+            Return $False
+         } else {
+            Write-Error "Error connecting to Cisco ISE"
+            Write-Error "`n($_.Exception.Message)`n"
+            Return $False
+         }
+      }    
+    
+    Return $Response
+  }
 }
 
 Function Send-CiscoISERestRequest {
@@ -169,6 +226,13 @@ Function Send-CiscoISERestRequest {
   }
 }
 
+Function Get-CiscoISEVersion {
+  $URI = "/ers/config/op/systemconfig/iseversion"
+  $Accept = "application/json"
+  $Response = Send-CiscoISERestSimpleRequest -Method GET -URI $URI -Accept $Accept
+  Return $Response.OperationResult.resultValue
+}
+
 Function Get-CiscoISEEndpointIdentityGroups {
   Param(
      [String]$Name=""
@@ -194,14 +258,10 @@ Function Get-CiscoISEEndpoints {
       $Name = ([System.Web.HttpUtility]::UrlEncode($Name)).ToUpper()
       $Filter = "/name/$($Name)"
       $URI = "/ers/config/endpoint$($Filter)"
-      $URI = "$($global:ciscoISEProxyConnection.Server)$($URI)"
-      $global:ciscoISEProxyConnection.headers['Accept'] = "application/vnd.com.cisco.ise.identity.endpoint.1.0+xml"
-      If($global:ciscoISEProxyConnection.SkipCertificateCheck) {
-        [Xml]$Response = Invoke-RestMethod -Uri "$($URI)" -Headers $global:ciscoISEProxyConnection.headers -Method Get -SkipCertificateCheck
-      }Else{
-        [Xml]$Response = Invoke-RestMethod -Uri "$($URI)" -Headers $global:ciscoISEProxyConnection.headers -Method Get
-      }
-      Return $Response.endpoint
+      $Accept = "application/json"
+      
+      $Response = Send-CiscoISERestSimpleRequest -Method GET -URI $URI -Accept $Accept
+      Return $Response.ERSEndPoint
     }Else{
       $URI = "/ers/config/endpoint"
       $Accept = "application/vnd.com.cisco.ise.identity.endpoint.1.0+xml"
