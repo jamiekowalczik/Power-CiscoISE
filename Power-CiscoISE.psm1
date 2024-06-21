@@ -129,7 +129,7 @@ Function Send-CiscoISERestRequest {
       Try {
         If($global:ciscoISEProxyConnection.SkipCertificateCheck) {
           If ($POSTData) {
-            [Xml]$Response = Invoke-RestMethod -Uri $URI -Headers $global:ciscoISEProxyConnection.headers -Method $Method -SkipCertificateCheck -Body $POSTData
+            $Response = Invoke-RestMethod -Uri $URI -Headers $global:ciscoISEProxyConnection.headers -Method $Method -SkipCertificateCheck -Body $POSTData
           } Else {
             [Xml]$Response = Invoke-RestMethod -Uri "$($URI)$($Separator)page=$($Page)" -Headers $global:ciscoISEProxyConnection.headers -Method $Method -SkipCertificateCheck
             $ResponseResults = $Response.searchResult.resources.resource
@@ -181,6 +181,7 @@ Function Get-CiscoISEEndpointIdentityGroups {
   If($Name){
      $Filter = "?filter=name.EQ.$($Name)"
   }
+
   $URI = "/ers/config/endpointgroup$($Filter)"
   $Accept = "application/vnd.com.cisco.ise.identity.endpointgroup.1.0+xml"
   $CiscoISEEndpointGroups = Send-CiscoISERestRequest -Method GET -URI $URI -Accept $Accept
@@ -191,25 +192,36 @@ Function Get-CiscoISEEndpoints {
   Param(
      [String]$Name=""
   )
-  $Filter = ""
-  If($Name){
-     $Name = ([System.Web.HttpUtility]::UrlEncode($Name)).ToUpper()
-     $Filter = "/name/$($Name)"
-     $URI = "/ers/config/endpoint$($Filter)"
-     $URI = "$($global:ciscoISEProxyConnection.Server)$($URI)"
-     $global:ciscoISEProxyConnection.headers['Accept'] = "application/vnd.com.cisco.ise.identity.endpoint.1.0+xml"
-     If($global:ciscoISEProxyConnection.SkipCertificateCheck) {
+  Try {
+    $Filter = ""
+    If($Name){
+      $Name = ([System.Web.HttpUtility]::UrlEncode($Name)).ToUpper()
+      $Filter = "/name/$($Name)"
+      $URI = "/ers/config/endpoint$($Filter)"
+      $URI = "$($global:ciscoISEProxyConnection.Server)$($URI)"
+      $global:ciscoISEProxyConnection.headers['Accept'] = "application/vnd.com.cisco.ise.identity.endpoint.1.0+xml"
+      If($global:ciscoISEProxyConnection.SkipCertificateCheck) {
         [Xml]$Response = Invoke-RestMethod -Uri "$($URI)" -Headers $global:ciscoISEProxyConnection.headers -Method Get -SkipCertificateCheck
-     }Else{
+      }Else{
         [Xml]$Response = Invoke-RestMethod -Uri "$($URI)" -Headers $global:ciscoISEProxyConnection.headers -Method Get
-     }
-     Return $Response.endpoint
-  }Else{
-     $URI = "/ers/config/endpoint"
-     $Accept = "application/vnd.com.cisco.ise.identity.endpoint.1.0+xml"
-     $CiscoISEEndpoints = Send-CiscoISERestRequest -Method GET -URI $URI -Accept $Accept
-     Return $CiscoISEEndpoints
-   }
+      }
+      Return $Response.endpoint
+    }Else{
+      $URI = "/ers/config/endpoint"
+      $Accept = "application/vnd.com.cisco.ise.identity.endpoint.1.0+xml"
+      $CiscoISEEndpoints = Send-CiscoISERestRequest -Method GET -URI $URI -Accept $Accept
+      Return $CiscoISEEndpoints
+    }
+  } catch {
+    if($_.Exception.Response.StatusCode -eq "Unauthorized") {
+      Write-Host -ForegroundColor Red "`nThe Cisco ISE connection failed - Unauthorized`n"
+    } elseif($_.Exception.Response.StatusCode -eq 404) {
+      Write-Error "Endpoint Doesn't Exist"
+    } else {
+      Write-Error "Error connecting to Cisco ISE"
+      Write-Error "`n($_.Exception.Message)`n"
+    }
+  }    
 }
 
 Function New-CiscoISEEndPoint {
@@ -260,7 +272,7 @@ Function Update-CiscoISEEndPoint {
    $GroupId = (Get-CiscoISEEndpointIdentityGroups -Name "$($GroupName)").id
    If(-Not $GroupId){
       Write-Error "Group does not exist"
-      Return $false
+      Return
    }
    $payload = @{
       ERSEndPoint = @{
@@ -273,42 +285,27 @@ Function Update-CiscoISEEndPoint {
    }
    
    $ID = Get-CiscoISEEndpoints -Name $Name
-   
    $ID = ([System.Web.HttpUtility]::UrlEncode($ID.id))
    $Filter = "/$($ID)"
+
    $URI = "/ers/config/endpoint$($Filter)"
-   $URI = "$($global:ciscoISEProxyConnection.Server)$($URI)"
-   $POSTData = $payload | ConvertTo-Json -Depth 100
-   $global:ciscoISEProxyConnection.headers['Accept'] = "application/json"
-   If($global:ciscoISEProxyConnection.SkipCertificateCheck) {
-      $Response = Invoke-RestMethod -Uri "$($URI)" -Headers $global:ciscoISEProxyConnection.headers -Method PATCH -SkipCertificateCheck -Body $POSTData
-   }Else{
-      $Response = Invoke-RestMethod -Uri "$($URI)" -Headers $global:ciscoISEProxyConnection.headers -Method PATCH -Body $POSTData
-   }
+   $Accept = "application/json"
+   $Response = Send-CiscoISERestRequest -Method PATCH -URI $URI -Accept $Accept -PSObject $payload
    Return $Response
 }
 
 Function Remove-CiscoISEEndPoint {
-Param(
+   Param(
       [Parameter(Mandatory = $false, HelpMessage = 'Endpoint name')]
       [string]$Name = ""
    )
    
    $ID = Get-CiscoISEEndpoints -Name $Name
-   
    $ID = ([System.Web.HttpUtility]::UrlEncode($ID.id))
    $Filter = "/$($ID)"
+  
    $URI = "/ers/config/endpoint$($Filter)"
-   $URI = "$($global:ciscoISEProxyConnection.Server)$($URI)"
-   $global:ciscoISEProxyConnection.headers['Accept'] = "application/json"
-   If($global:ciscoISEProxyConnection.SkipCertificateCheck) {
-      $Response = Invoke-RestMethod -Uri "$($URI)" -Headers $global:ciscoISEProxyConnection.headers -Method DELETE -SkipCertificateCheck
-   }Else{
-      $Response = Invoke-RestMethod -Uri "$($URI)" -Headers $global:ciscoISEProxyConnection.headers -Method DELETE
-   }
+   $Accept = "application/json"
+   $Response = Send-CiscoISERestRequest -Method DELETE -URI $URI -Accept $Accept
    Return $Response
 }
-   
-
-
-
