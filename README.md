@@ -50,6 +50,19 @@ PS >
 ### Delete
 ```
 PS > Remove-CiscoISEEndPoint -name DE:AD:BE:EF:CA:FE
-
 PS >
+```
+### Commands
+```
+PS > Get-Command -module Power-CiscoISE
+
+CommandType     Name                                               Version    Source
+-----------     ----                                               -------    ------
+Function        Connect-CiscoISE                                   1.0.0.0    power-CiscoISE
+Function        Get-CiscoISEEndpointIdentityGroups                 1.0.0.0    power-CiscoISE
+Function        Get-CiscoISEEndpoints                              1.0.0.0    power-CiscoISE
+Function        New-CiscoISEEndPoint                               1.0.0.0    power-CiscoISE
+Function        Remove-CiscoISEEndPoint                            1.0.0.0    power-CiscoISE
+Function        Send-CiscoISERestRequest                           1.0.0.0    power-CiscoISE
+Function        Update-CiscoISEEndPoint                            1.0.0.0    power-CiscoISE
 ```
