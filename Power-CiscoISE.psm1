@@ -17,10 +17,10 @@ Function Connect-CiscoISE {
   
   Param(
     [Parameter(Mandatory=$false)][Switch]$SkipCertificateCheck = $True,
-    [Parameter(Mandatory=$true)][String]$Host = "",
+    [Parameter(Mandatory=$true, HelpMessage="Hostname or IP Address")][String]$Host,
     [Parameter(Mandatory=$false)][String]$Port = "9060",
-    [Parameter(Mandatory=$false)][String]$Username = "",
-    [Parameter(Mandatory=$false)][String]$Password = "",
+    [Parameter(Mandatory=$true, HelpMessage="Username")][String]$Username,
+    [Parameter(Mandatory=$false, HelpMessage="Password")][String]$Password,
     [Parameter(Mandatory=$false)][String]$Accept = "",
     [Parameter(Mandatory=$false)][Switch]$Troubleshoot
   )
@@ -28,13 +28,9 @@ Function Connect-CiscoISE {
   begin {}
   
   process {
-    # If credentials aren't passed to the function then prompt the user for them.
-    If($Username -eq "" -And $Password -eq ""){
-      $creds = Get-Credential
-      $Username = $creds.GetNetworkCredential().Username
-      $Password = $creds.GetNetworkCredential().Password
+    If($Password -eq ""){
+      $Password = Read-Host 'Password' -MaskInput
     }
-  
     $basicAuthValue = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $Username, $Password)))
 
     $Headers = @{}
@@ -295,17 +291,21 @@ Function Update-CiscoISEEndPoint {
 }
 
 Function Remove-CiscoISEEndPoint {
-   Param(
+Param(
       [Parameter(Mandatory = $false, HelpMessage = 'Endpoint name')]
       [string]$Name = ""
-   )
+     )
    
-   $ID = Get-CiscoISEEndpoints -Name $Name
-   $ID = ([System.Web.HttpUtility]::UrlEncode($ID.id))
-   $Filter = "/$($ID)"
+  $ID = Get-CiscoISEEndpoints -Name $Name
+  $ID = ([System.Web.HttpUtility]::UrlEncode($ID.id))
+  $Filter = "/$($ID)"
   
-   $URI = "/ers/config/endpoint$($Filter)"
-   $Accept = "application/json"
-   $Response = Send-CiscoISERestRequest -Method DELETE -URI $URI -Accept $Accept
-   Return $Response
+  $URI = "/ers/config/endpoint$($Filter)"
+  $Accept = "application/json"
+  $Response = Send-CiscoISERestRequest -Method DELETE -URI $URI -Accept $Accept
+  Return $Response
 }
+   
+
+
+
