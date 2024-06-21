@@ -144,7 +144,7 @@ Function Send-CiscoISERestRequest {
 	  }
         } else {
           If ($POSTData) {
-            [Xml]$Response = Invoke-RestMethod -Uri $URI -Headers $global:ciscoISEProxyConnection.headers -Method $Method -Body $POSTData
+            $Response = Invoke-RestMethod -Uri $URI -Headers $global:ciscoISEProxyConnection.headers -Method $Method -Body $POSTData
           } Else {
             [Xml]$Response = Invoke-RestMethod -Uri "$($URI)?page=$($Page)" -Headers $global:ciscoISEProxyConnection.headers -Method $Method
             $ResponseResults = $Response.searchResult.resources.resource
