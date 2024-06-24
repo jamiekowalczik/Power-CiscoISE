@@ -65,4 +65,5 @@ Function        New-CiscoISEEndPoint                               1.0.0.0    po
 Function        Remove-CiscoISEEndPoint                            1.0.0.0    power-CiscoISE
 Function        Send-CiscoISERestRequest                           1.0.0.0    power-CiscoISE
 Function        Update-CiscoISEEndPoint                            1.0.0.0    power-CiscoISE
+Function        Update-CiscoISEVersion                            1.0.0.0    power-CiscoISE
 ```
