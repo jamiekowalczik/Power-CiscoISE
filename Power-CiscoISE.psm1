@@ -13,7 +13,7 @@ Function Connect-CiscoISE {
 
   #>
   
-  [CmdLetBinding(DefaultParameterSetName="ISEHost")]
+  [CmdLetBinding(DefaultParameterSetName="Host")]
   
   Param(
     [Parameter(Mandatory=$false)][Switch]$SkipCertificateCheck = $True,
